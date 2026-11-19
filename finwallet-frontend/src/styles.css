@@ -1,0 +1,197 @@
+/*
+ * Tailwind v4 entry: config lives here, with no tailwind.config.js or PostCSS plugin.
+ * Keep every @import in this top block. Web fonts load via <link> in src/routes/__root.tsx.
+ */
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * FinWallet design system
+ * Calm fintech palette: off-white canvas, white cards, deep navy ink,
+ * a restrained green for money-in / success, amber for pending.
+ */
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --shadow-card: var(--shadow-card-value);
+  --shadow-elevated: var(--shadow-elevated-value);
+  --shadow-balance: var(--shadow-balance-value);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.875rem;
+
+  --background: oklch(0.982 0.004 250);
+  --foreground: oklch(0.22 0.035 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.035 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.035 260);
+
+  --primary: oklch(0.26 0.06 262);
+  --primary-foreground: oklch(0.985 0.004 250);
+  --secondary: oklch(0.955 0.007 250);
+  --secondary-foreground: oklch(0.26 0.06 262);
+  --muted: oklch(0.962 0.006 250);
+  --muted-foreground: oklch(0.52 0.025 258);
+  --accent: oklch(0.955 0.03 160);
+  --accent-foreground: oklch(0.36 0.09 160);
+
+  --destructive: oklch(0.58 0.2 25);
+  --destructive-foreground: oklch(0.985 0.004 250);
+  --destructive-soft: oklch(0.96 0.025 25);
+  --success: oklch(0.58 0.13 158);
+  --success-foreground: oklch(0.985 0.01 158);
+  --success-soft: oklch(0.955 0.04 158);
+  --warning: oklch(0.62 0.13 70);
+  --warning-foreground: oklch(0.99 0.01 80);
+  --warning-soft: oklch(0.965 0.045 85);
+
+  /* Deep navy surface used for the balance card and auth brand panel */
+  --ink: oklch(0.24 0.055 262);
+  --ink-foreground: oklch(0.98 0.005 250);
+  --ink-muted: oklch(0.78 0.03 255);
+
+  --gradient-ink: radial-gradient(120% 140% at 100% 0%, oklch(0.42 0.09 205 / 0.55) 0%, transparent 55%),
+    linear-gradient(140deg, oklch(0.23 0.055 264) 0%, oklch(0.28 0.065 255) 100%);
+
+  --shadow-card-value: 0 1px 2px oklch(0.22 0.035 260 / 0.04), 0 4px 18px -6px oklch(0.22 0.035 260 / 0.07);
+  --shadow-elevated-value: 0 2px 4px oklch(0.22 0.035 260 / 0.04), 0 18px 40px -16px oklch(0.22 0.035 260 / 0.18);
+  --shadow-balance-value: 0 24px 48px -24px oklch(0.24 0.06 262 / 0.55);
+
+  --border: oklch(0.922 0.007 250);
+  --input: oklch(0.9 0.008 250);
+  --ring: oklch(0.58 0.13 158);
+
+  --chart-1: oklch(0.58 0.13 158);
+  --chart-2: oklch(0.26 0.06 262);
+  --chart-3: oklch(0.62 0.13 70);
+  --chart-4: oklch(0.55 0.08 230);
+  --chart-5: oklch(0.7 0.05 255);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.36 0.03 258);
+  --sidebar-primary: oklch(0.26 0.06 262);
+  --sidebar-primary-foreground: oklch(0.985 0.004 250);
+  --sidebar-accent: oklch(0.962 0.008 250);
+  --sidebar-accent-foreground: oklch(0.22 0.035 260);
+  --sidebar-border: oklch(0.93 0.006 250);
+  --sidebar-ring: oklch(0.58 0.13 158);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Deep navy card surface with a soft teal glow */
+@utility surface-ink {
+  background: var(--gradient-ink);
+  color: var(--ink-foreground);
+}
+
+/* Fine grid texture for the navy surfaces */
+@utility ink-grid {
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse at 80% 0%, black 10%, transparent 70%);
+}
+
+/* Money and reference numbers line up in columns */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+@utility animate-rise {
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
