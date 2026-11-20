@@ -18,6 +18,8 @@ import finwallet_api.user.entity.User;
 import finwallet_api.user.repository.UserRepository;
 import finwallet_api.wallet.entity.Wallet;
 import finwallet_api.wallet.repository.WalletRepository;
+import finwallet_api.transfer.risk.TransferPolicy;
+import finwallet_api.transfer.risk.TransferPostingTime;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -54,6 +57,12 @@ class TransferServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TransferPolicy policy;
+
+    @Mock
+    private TransferPostingTime postingTime;
+
     private TransferService transferService;
 
     private Wallet senderWallet;
@@ -62,8 +71,9 @@ class TransferServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(postingTime.now()).thenReturn(OffsetDateTime.now());
         transferService = new TransferService(
-                transferRepository, ledgerEntryRepository, walletRepository, userRepository);
+                transferRepository, ledgerEntryRepository, walletRepository, userRepository, policy, postingTime);
 
         senderWallet = new Wallet();
         senderWallet.setId(1L);

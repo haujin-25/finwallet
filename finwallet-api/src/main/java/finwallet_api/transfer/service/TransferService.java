@@ -12,13 +12,15 @@ import finwallet_api.transfer.entity.LedgerEntry;
 import finwallet_api.transfer.entity.Transfer;
 import finwallet_api.transfer.repository.LedgerEntryRepository;
 import finwallet_api.transfer.repository.TransferRepository;
+import finwallet_api.transfer.risk.TransferPolicy;
+import finwallet_api.transfer.risk.TransferPostingTime;
+import finwallet_api.transfer.risk.TransferRiskRule;
 import finwallet_api.user.repository.UserRepository;
 import finwallet_api.wallet.entity.Wallet;
 import finwallet_api.wallet.repository.WalletRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,20 +36,26 @@ public class TransferService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
+    private final TransferPolicy policy;
+    private final TransferPostingTime postingTime;
 
     public TransferService(
             TransferRepository transferRepository,
             LedgerEntryRepository ledgerEntryRepository,
             WalletRepository walletRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            TransferPolicy policy,
+            TransferPostingTime postingTime
     ) {
         this.transferRepository = transferRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.walletRepository = walletRepository;
         this.userRepository = userRepository;
+        this.policy = policy;
+        this.postingTime = postingTime;
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TransferResponse transfer(Long senderUserId, TransferRequest request) {
         // Resolve IDs without placing unlocked Wallet entities in the persistence context.
         Long senderWalletId = walletRepository.findIdByUserId(senderUserId)
@@ -85,7 +93,7 @@ public class TransferService {
 
         return post(wallets, new Transfer(generateReference(), senderWalletId, recipientWalletId,
                 request.amount(), wallets.sender().getCurrency(), request.description(), request.idempotencyKey(),
-                postingTimestamp()));
+                postingTime.now()));
     }
 
     /**
@@ -108,7 +116,7 @@ public class TransferService {
         // a waiting attempt see the committed reversal before checking funds.
         return transferRepository.findByReversalOfTransferId(original.getId())
                 .map(this::toResponse)
-                .orElseGet(() -> post(wallets, Transfer.reversalOf(generateReference(), original, postingTimestamp())));
+                .orElseGet(() -> post(wallets, Transfer.reversalOf(generateReference(), original, postingTime.now())));
     }
 
     private TransferResponse post(LockedWallets wallets, Transfer transfer) {
@@ -137,6 +145,8 @@ public class TransferService {
             throw new ArithmeticException("Recipient balance overflow");
         }
 
+        List<TransferRiskRule> alerts = transfer.getReversalOfTransferId() == null
+                ? policy.evaluate(transfer) : List.of();
         Transfer posted = transferRepository.saveAndFlush(transfer);
         sender.setBalance(sender.getBalance() - amount);
         sender.setUpdatedAt(OffsetDateTime.now());
@@ -148,6 +158,7 @@ public class TransferService {
 
         ledgerEntryRepository.save(LedgerEntry.debitFor(posted));
         ledgerEntryRepository.save(LedgerEntry.creditFor(posted));
+        policy.record(posted, alerts);
         return toResponse(posted);
     }
 
@@ -161,11 +172,6 @@ public class TransferService {
     }
 
     private record LockedWallets(Wallet sender, Wallet recipient) {
-    }
-
-    private OffsetDateTime postingTimestamp() {
-        // Use PostgreSQL timestamp precision for consistent replays.
-        return OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 
     private Wallet lockWallet(long walletId) {

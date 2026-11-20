@@ -204,6 +204,7 @@ class FundingIntegrationTest {
 
     @Test
     void registeredUsersCanSettleRm100AndReplayAnRm1050Transfer() throws Exception {
+        var baseline = reconciliation.reconcile().discrepancies();
         var sender = registerWorkflowAccount();
         Account recipient = null;
         try {
@@ -246,6 +247,7 @@ class FundingIntegrationTest {
                     .containsExactlyInAnyOrder(
                             new Entry("DEBIT", sender.walletId(), null, 1050, "MYR"),
                             new Entry("CREDIT", recipient.walletId(), null, 1050, "MYR"));
+            assertThat(reconciliation.reconcile().discrepancies()).containsExactlyElementsOf(baseline);
         } finally {
             cleanUpAccounts(sender, recipient == null ? sender : recipient);
         }
@@ -424,6 +426,34 @@ class FundingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hasNext").value(true))
                 .andExpect(jsonPath("$.items[0].operationType").value("REVERSAL"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = FundingStatus.class, names = {"PENDING", "FAILED"})
+    void reconciliationReportsNonCompletedFundingEntriesWithoutCountingTheirAmounts(FundingStatus status) {
+        var baseline = reconciliation.reconcile().discrepancies();
+        fund(alice, 10000);
+        var deposit = request(alice, FundingType.DEPOSIT, 3000, "unposted-entries");
+        if (status == FundingStatus.FAILED) {
+            settlement.checkStatus(deposit.reference(), Scenario.FAILURE);
+        }
+        jdbc.update("""
+                INSERT INTO funding_ledger_entries
+                    (operation_id, wallet_id, account_code, entry_type, amount, currency, created_at)
+                SELECT f.id, f.wallet_id, NULL, 'CREDIT', f.amount, f.currency, f.created_at
+                FROM funding_operations f WHERE f.reference = ?
+                UNION ALL
+                SELECT f.id, NULL, 'SIMULATED_MYR_SETTLEMENT', 'DEBIT', f.amount, f.currency, f.created_at
+                FROM funding_operations f WHERE f.reference = ?
+                """, deposit.reference(), deposit.reference());
+
+        assertWallet(alice, 10000, 0);
+        assertThat(reconciliation.reconcile().discrepancies())
+                .filteredOn(issue -> !baseline.contains(issue))
+                .extracting(ReconciliationDiscrepancy::type)
+                .containsExactly(ReconciliationDiscrepancy.Type.FUNDING_OPERATION_MISMATCH,
+                        ReconciliationDiscrepancy.Type.FUNDING_ENTRY_MISMATCH,
+                        ReconciliationDiscrepancy.Type.FUNDING_ENTRY_MISMATCH);
     }
 
     @Test

@@ -12,6 +12,9 @@ import finwallet_api.common.security.JwtService;
 import finwallet_api.common.security.SecurityConfig;
 import finwallet_api.common.security.UserPrincipal;
 import finwallet_api.reconciliation.service.LedgerReconciliationService;
+import finwallet_api.transfer.risk.TransferRiskAdminController;
+import finwallet_api.transfer.risk.TransferRiskRepository;
+import finwallet_api.transfer.risk.TransferRiskRule;
 import finwallet_api.user.entity.User;
 import finwallet_api.user.entity.UserRole;
 import finwallet_api.user.repository.UserRepository;
@@ -21,6 +24,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +71,7 @@ class WalletAdministrationSecurityTest {
     @Autowired private WalletRepository wallets;
     @Autowired private AdminAuditRepository audit;
     @Autowired private WalletAdministrationService administration;
+    @Autowired private TransferRiskRepository riskAlerts;
 
     private MockMvc mvc;
 
@@ -160,6 +165,29 @@ class WalletAdministrationSecurityTest {
                 eq("FROZEN"), eq("FROZEN"), eq(Outcome.NO_CHANGE));
     }
 
+    @Test
+    void riskAlertsRequireAdminAndPaginateWithoutCustomerDetails() throws Exception {
+        String path = "/api/admin/transfer-risk-alerts";
+        setDatabaseRole(UserRole.ROLE_USER);
+        String bearer = "Bearer " + jwt.generateToken(EMAIL, 7L);
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).header("Authorization", bearer)).andExpect(status().isForbidden());
+
+        setDatabaseRole(UserRole.ROLE_ADMIN);
+        var alert = new TransferRiskRepository.Alert(1L, "TRF-example", 11L,
+                TransferRiskRule.LARGE_TRANSFER, OffsetDateTime.parse("2026-11-20T16:00:00Z"));
+        when(riskAlerts.readPage(2, 3)).thenReturn(List.of(alert));
+        mvc.perform(get(path).header("Authorization", bearer).param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].rule").value("LARGE_TRANSFER"))
+                .andExpect(jsonPath("$.items[0].transferReference").value("TRF-example"))
+                .andExpect(jsonPath("$.items[0].email").doesNotHaveJsonPath())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+        mvc.perform(get(path).header("Authorization", bearer).param("size", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
     private void setDatabaseRole(UserRole role) {
         var user = mock(User.class);
         when(user.getId()).thenReturn(7L);
@@ -172,12 +200,13 @@ class WalletAdministrationSecurityTest {
     @Configuration(proxyBeanMethods = false)
     @EnableWebMvc
     @Import({SecurityConfig.class, JwtAuthenticationFilter.class, WalletAdministrationController.class,
-            WalletAdministrationService.class, GlobalExceptionHandler.class})
+            WalletAdministrationService.class, TransferRiskAdminController.class, GlobalExceptionHandler.class})
     static class Config {
         @Bean JwtService jwtService() { return new JwtService(SECRET, 900); }
         @Bean UserRepository users() { return mock(UserRepository.class); }
         @Bean WalletRepository wallets() { return mock(WalletRepository.class); }
         @Bean AdminAuditRepository audit() { return mock(AdminAuditRepository.class); }
+        @Bean TransferRiskRepository riskAlerts() { return mock(TransferRiskRepository.class); }
         @Bean LedgerReconciliationService reconciliation() { return mock(LedgerReconciliationService.class); }
     }
 }

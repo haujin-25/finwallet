@@ -139,12 +139,17 @@ class LedgerReconciliationIntegrationTest {
     }
 
     @Test
-    void detectsLedgerEntriesAttachedToFailedTransfer() {
+    void reportsFailedTransferEntriesWithoutCountingThemAsPosted() {
         long transferId = completeRoundTrip();
         jdbc.update("UPDATE transfers SET status = 'FAILED' WHERE id = ?", transferId);
 
-        assertThat(typesForTransfer(reconciliation.reconcile(), transferId))
+        var report = reconciliation.reconcile();
+        assertThat(typesForTransfer(report, transferId))
                 .containsExactly(Type.UNEXPECTED_ENTRY, Type.UNEXPECTED_ENTRY);
+        // Removing the first posting from the net leaves only the completed return leg pair.
+        assertThat(report.discrepancies()).filteredOn(issue -> issue.type() == Type.BALANCE_MISMATCH)
+                .extracting(ReconciliationDiscrepancy::walletId)
+                .contains(alice.walletId(), bob.walletId());
     }
 
     @Test

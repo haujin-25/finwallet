@@ -28,7 +28,9 @@ public class ReconciliationRepository {
     public List<ReconciliationDiscrepancy> findBalanceDiscrepancies() {
         return jdbc.query("""
                 WITH entries AS (
-                    SELECT wallet_id, currency, entry_type, amount FROM ledger_entries
+                    SELECT e.wallet_id, e.currency, e.entry_type, e.amount
+                    FROM ledger_entries e
+                    JOIN transfers t ON t.id = e.transfer_id AND t.status = 'COMPLETED'
                     UNION ALL
                     SELECT e.wallet_id, e.currency, e.entry_type, e.amount
                     FROM funding_ledger_entries e

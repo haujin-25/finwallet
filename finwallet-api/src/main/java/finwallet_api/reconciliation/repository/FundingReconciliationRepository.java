@@ -78,10 +78,11 @@ public class FundingReconciliationRepository {
     public List<ReconciliationDiscrepancy> findSettlementDiscrepancies() {
         return jdbc.query("""
                 WITH position AS (
-                    SELECT coalesce(sum(CASE entry_type WHEN 'CREDIT' THEN amount::numeric
-                                           WHEN 'DEBIT' THEN -amount::numeric END), 0) AS posted
-                    FROM funding_ledger_entries
-                    WHERE account_code = 'SIMULATED_MYR_SETTLEMENT' AND currency = 'MYR'
+                    SELECT coalesce(sum(CASE e.entry_type WHEN 'CREDIT' THEN e.amount::numeric
+                                           WHEN 'DEBIT' THEN -e.amount::numeric END), 0) AS posted
+                    FROM funding_ledger_entries e
+                    JOIN funding_operations f ON f.id = e.operation_id AND f.status = 'COMPLETED'
+                    WHERE e.account_code = 'SIMULATED_MYR_SETTLEMENT' AND e.currency = 'MYR'
                 ), completed AS (
                     SELECT coalesce(sum(CASE operation_type WHEN 'WITHDRAWAL' THEN amount::numeric
                                            WHEN 'DEPOSIT' THEN -amount::numeric END), 0) AS expected

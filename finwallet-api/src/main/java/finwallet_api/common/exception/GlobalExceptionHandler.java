@@ -1,6 +1,7 @@
 package finwallet_api.common.exception;
 
 import finwallet_api.funding.service.FundingStateConflictException;
+import finwallet_api.transfer.risk.TransferLimitException;
 import jakarta.persistence.PersistenceException;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataAccessException;
@@ -117,6 +118,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handlePersistenceFailure() {
         return ResponseEntity.internalServerError().body("Unable to complete the request");
     }
+
+    @ExceptionHandler(TransferLimitException.class)
+    public ResponseEntity<TransferLimitError> handleTransferLimit(TransferLimitException exception) {
+        return ResponseEntity.unprocessableEntity()
+                .body(new TransferLimitError(exception.code(), exception.getMessage()));
+    }
+
+    public record TransferLimitError(TransferLimitException.Code code, String message) {}
 
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<String> handleInsufficientFunds(
